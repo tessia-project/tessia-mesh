@@ -1,0 +1,44 @@
+stages:
+  - unit test
+#TODO:
+#  - integration test
+#  - release
+
+default:
+  image: python:3.8
+  before_script:
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
+    - pip3 install -r requirements-ci.txt
+    - cd src
+
+# unit testing for `control_node` component
+control_node unit:
+  stage: unit test
+  script:
+    - pip3 install -r control_node/requirements.txt
+    - python3 -m pytest control_node
+
+# unit testing for `permission_manager` component
+permission_manager unit:
+  stage: unit test
+  script:
+    - pip3 install -r permission_manager/requirements.txt
+    - python3 -m pytest permission_manager
+
+# unit testing for `scheduler` component
+scheduler unit:
+  stage: unit test
+  script:
+    - pip3 install -r scheduler/requirements.txt
+    - python3 -m pytest scheduler
+
+# unit testing for `resource_manager` component
+resource_manager unit:
+  stage: unit test
+  variables:
+    TESSIA_RESOURCE_MANAGER_BD_PASSWORD: "pass4test"
+  script:
+    - pip3 install -r resource_manager/requirements.txt
+    - python3 -m pytest resource_manager
