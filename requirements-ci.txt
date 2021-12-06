@@ -1,0 +1,2 @@
+# dependencies required for CI/CD activities
+pytest>=6.2.5

@@ -42,12 +42,13 @@ INSTANCE_CONFIGURATION = {
             "api_app": "permission_manager.api:create_app()",
             "configuration": {}
         },
-        "resource_manager": {
-            "listen": "localhost",
-            "port": 8452,
-            "api_app": "resource_manager.src.application.api.flask_app:create_app()",
-            "configuration": {}
-        },
+        # TODO: add resource_manager
+        # "resource_manager": {
+        #     "listen": "localhost",
+        #     "port": 8452,
+        #     "api_app": "resource_manager.src.application.api.flask_app:create_app()",
+        #     "configuration": {}
+        # },
         "scheduler": {
             "listen": "localhost",
             "port": 8454,
@@ -95,11 +96,13 @@ def test_instance_can_be_launched(instance, tmpdir):
     # do requests
     req_control_node = session.get('https://localhost:8450').json()
     req_perman = session.get('https://localhost:8451').json()
-    req_resman = session.get('https://localhost:8452').json()
+    # TODO: add test for resource_manager
+    #req_resman = session.get('https://localhost:8452').json()
     req_scheduler = session.get('https://localhost:8454').json()
 
     assert req_control_node['name'] == 'control_node'
     assert req_perman['name'] == 'permission_manager'
-    assert req_resman['name'] == 'resource_manager'
+    # TODO: add test for resource_manager
+    #assert req_resman['name'] == 'resource_manager'
     assert req_scheduler['name'] == 'scheduler'
 # test_instance_can_be_launched()

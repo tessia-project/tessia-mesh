@@ -1,0 +1,6 @@
+# rest-api
+flask>=2.0.2
+# postgres python driver
+psycopg2>=2.9.2
+# manage db session from flask
+sqlalchemy>=1.4.27

@@ -1,0 +1,6 @@
+# rest-api
+flask>=2.0.2
+# json schema validator
+jsonschema>=4.2.1
+# HTTP library
+requests>=2.26.0
