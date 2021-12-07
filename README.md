@@ -15,6 +15,9 @@ limitations under the License.
 -->
 # Tessia - Task Execution Supporter and System Installation Assistant
 
+[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://gitlab.com/tessia-project/tessia-mesh/-/blob/master/LICENSE)
+[![pipeline status](https://img.shields.io/gitlab/pipeline/tessia-project/tessia)](https://gitlab.com/tessia-project/tessia-mesh/)
+
 ## What is it?
 
 A tool to automate and simplify the installation/configuration/testing of Linux systems running on the IBM Z platform.
