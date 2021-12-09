@@ -25,3 +25,23 @@ A tool to automate and simplify the installation/configuration/testing of Linux 
 **tessia-mesh** is an implementation of the [tessia tool](https://gitlab.com/tessia-project/tessia) based on the mesh architecture approach.
 
 At the moment it is at the stage of active development.
+
+## Contributing
+
+If you are interested in contributing to the project, read [How to contribute (development process)](doc/developers/contributing.md).
+
+All contributors must adhere to [Code of Conduct](CODE_OF_CONDUCT.md).
+
+See [Governance](GOVERNANCE.md)for description of project roles.
+
+## Reporting issues
+
+Feel free to open issues and raise questions in [tessia issue tracker](https://gitlab.com/tessia-project/tessia-mesh/-/issues). If you are not comfortable disclosing issue details or it is a security related issue, please send an email to (tessia-private at lists.openmainframeproject.org) instead.
+
+## Contact
+
+You can join us on IRC at the `#tessia` channel on [OFTC](http://www.oftc.net) and our mailing list (tessia-user at lists.openmainframeproject.org)
+
+## License
+
+Tessia is licensed under the [Apache 2.0 license](LICENSE).
