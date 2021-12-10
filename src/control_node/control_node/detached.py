@@ -72,7 +72,7 @@ COMPONENT_START_TIMEOUT = 10.0
 
 # Component list
 COMPONENT_LIST = ('control_node', 'permission_manager',
-                  'resource_manager', 'scheduler')
+                  'resource_manager', 'scheduler', 'task_runner')
 
 SCHEMA = {
     '$schema': 'https://json-schema.org/draft/2020-12/schema',
@@ -206,18 +206,33 @@ class DetachedInstance:
         key_path, crt_path, ca_path = self._ca.export_key_cert_to_directory(
             conf_dir, *key_crt_tuple)
 
-        uwsgi_fifo = os.path.join(conf_dir, 'fifo')
+        # some components use WSGI, some ASGI, so we choose a server here
+        if component_name in ('task_runner',):
+            # prepare ASGI
+            server = 'gunicorn'
+            args = [
+                 '--worker-class', 'uvicorn.workers.UvicornWorker',
+                '--bind', f'{listen[0]}:{listen[1]}',
+                '--certfile', crt_path,
+                '--keyfile', key_path,
+                '--ca-certs', ca_path,
+                self._conf[component_name]["api_app"],
+            ]
+        else:
+            # prepare WSGI
+            server = 'uwsgi'
+            uwsgi_fifo = os.path.join(conf_dir, 'fifo')
+            args = [
+                '--https',
+                f'{listen[0]}:{listen[1]},{crt_path},{key_path},HIGH,!{ca_path}',
+                '--mount', f'/={self._conf[component_name]["api_app"]}',
+                '-M', '--master-fifo', uwsgi_fifo
+            ]
 
-        args = [
-            '--https',
-            f'{listen[0]}:{listen[1]},{crt_path},{key_path},HIGH,!{ca_path}',
-            '--mount', f'/={self._conf[component_name]["api_app"]}',
-            '-M', '--master-fifo', uwsgi_fifo
-        ]
-        self._logger.info('Starting uwsgi with args %s', args)
+        self._logger.info('Starting %s with args %s', server, args)
         with open(f'.{component_name}.log', 'w', encoding='utf-8') as logfile:
             return subprocess.Popen(
-                ['uwsgi', *args],
+                [server, *args],
                 env=env, stdout=logfile, stderr=subprocess.STDOUT)
     # _start_local_component()
 

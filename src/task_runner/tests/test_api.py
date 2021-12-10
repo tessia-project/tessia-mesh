@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint:disable=redefined-outer-name,no-self-use
+
 """
-Task Runner class unit tests
+Task Runner API tests
 """
 
 #
@@ -22,8 +24,8 @@ Task Runner class unit tests
 
 import pytest
 
-from flask import json
-from task_runner.api.flask_app import create_app
+from starlette.testclient import TestClient
+from task_runner.api.star_app import create_app
 
 #
 # CONSTANTS AND DEFINITIONS
@@ -38,8 +40,7 @@ from task_runner.api.flask_app import create_app
 @pytest.fixture
 def client():
     """Create test client"""
-    app = create_app()
-    with app.test_client() as client:
+    with TestClient(create_app()) as client:
         yield client
 # client()
 
@@ -47,9 +48,9 @@ def client():
 def test_api_info_responses_are_valid(client):
     """Query API version"""
     resp = client.get('/')
-    api_info = json.loads(resp.data)
+    api_info = resp.json()
     resp = client.get(f"{api_info['apis'][0]['root']}/schema")
-    schema_info = json.loads(resp.data)
+    schema_info = resp.json()
 
     assert api_info['name'] == 'task_runner'
     assert 'version' in api_info['apis'][0]
@@ -60,11 +61,17 @@ def test_api_info_responses_are_valid(client):
 
 class TestApiV1:
     """Tests for API v1"""
+    ECHO_MACHINE = {
+        'machine': 'echo', 'parameters': """
+            echo Machine starting
+            sleep 5
+            echo Machine stopping
+        """}
 
     def test_invalid_request_is_rejected(self, client):
         """Invalid (wrong schema) requests are rejected"""
         resp = client.post(
-            '/v1/tasks', 
+            '/v1/tasks',
             json={'without-machine-parameters': 'request-is-invalid'})
 
         assert resp.status_code == 400
@@ -79,25 +86,58 @@ class TestApiV1:
 
     def test_echo_machine_is_started_and_stopped(self, client):
         """Echo machine can be staeted and stopped"""
-        resp_create = client.post('/v1/tasks', json={
-            'machine': 'echo', 'parameters': """
-                echo Machine starting
-                sleep 5000
-                echo Machine stopping
-            """})
-        task_created = json.loads(resp_create.data)
+        resp_create = client.post('/v1/tasks', json=self.ECHO_MACHINE)
+        task_created = resp_create.json()
 
         resp_status = client.get(f'/v1/tasks/{task_created["taskId"]}')
-        task_status = json.loads(resp_status.data)
+        task_status = resp_status.json()
 
         resp_stop = client.post(f'/v1/tasks/{task_created["taskId"]}/stop')
-        stop_status = json.loads(resp_stop.data)
+        stop_status = resp_stop.json()
 
         assert resp_create.status_code == 201
         assert task_created['taskId']
         assert resp_status.status_code == 200
         assert task_status['taskId'] == task_created['taskId']
-        assert task_status['status']    # just anything
+        assert task_status['state']    # just anything
         assert resp_stop.status_code == 200
         assert stop_status['taskId'] == task_created['taskId']
     # test_echo_machine_is_started_and_stopped()
+
+    def test_parallel_tasks_are_running(self, client):
+        """Start two tasks and expect them to be running"""
+        resp_create = client.post('/v1/tasks', json=self.ECHO_MACHINE)
+        task_1 = resp_create.json()
+        resp_create = client.post('/v1/tasks', json=self.ECHO_MACHINE)
+        task_2 = resp_create.json()
+
+        resp_list = client.get('/v1/tasks/')
+        task_list_running = resp_list.json()
+
+        client.post(f'/v1/tasks/{task_1["taskId"]}/stop')
+        client.post(f'/v1/tasks/{task_2["taskId"]}/stop')
+
+        assert task_list_running == [
+            {'taskId': task_1["taskId"], 'state': 'running'},
+            {'taskId': task_2["taskId"], 'state': 'running'}]
+        assert task_1["taskId"] != task_2["taskId"]
+    # test_parallel_tasks_are_running()
+
+    def test_remove_running_task(self, client):
+        """Start two tasks, stop one and check reported task lists"""
+        task_1 = client.post('/v1/tasks', json=self.ECHO_MACHINE).json()
+        task_2 = client.post('/v1/tasks', json=self.ECHO_MACHINE).json()
+        task_list_running = client.get('/v1/tasks/').json()
+        client.post(f'/v1/tasks/{task_1["taskId"]}/stop')
+        client.delete(f'/v1/tasks/{task_1["taskId"]}')
+        task_list_remaining = client.get('/v1/tasks/').json()
+        client.post(f'/v1/tasks/{task_2["taskId"]}/stop')
+
+        assert task_list_running == [
+            {'taskId': task_1["taskId"], 'state': 'running'},
+            {'taskId': task_2["taskId"], 'state': 'running'}]
+        assert task_list_remaining == [
+            {'taskId': task_2["taskId"], 'state': 'running'}]
+
+    # test_remove_running_task()
+# TestApiV1

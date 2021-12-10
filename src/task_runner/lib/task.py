@@ -19,7 +19,7 @@ Scheduler task
 #
 # IMPORTS
 #
-from jsonschema import Draft7Validator  # TODO: update to 2020 validator
+from jsonschema import Draft202012Validator
 
 #
 # CONSTANTS AND DEFINITIONS
@@ -49,7 +49,7 @@ SCHEMA = {
 #
 
 
-_VALIDATOR = Draft7Validator(SCHEMA)
+_VALIDATOR = Draft202012Validator(SCHEMA)
 
 
 class ValidationError(ValueError):
@@ -62,7 +62,7 @@ class ValidationError(ValueError):
     # __init__()
 # ValidationError
 
-
+# pylint:disable=too-few-public-methods
 class Task:
     """
     A state machine task

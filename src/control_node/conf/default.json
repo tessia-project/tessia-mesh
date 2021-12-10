@@ -33,6 +33,12 @@
                     }
                 }
             }
+        },
+        "task_runner": {
+            "listen": "localhost",
+            "port": 7356,
+            "api_app": "task_runner.api.star_app:create_app",
+            "configuration": {}
         }
     }
 }

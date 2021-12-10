@@ -1,0 +1,13 @@
+{
+    "machine": "echo",
+    "parameters": [
+        "echo The task has stared and will now sleep",
+        "sleep 2.5",
+        "log warning Important message",
+        "sleep 2.5",
+        "log error Another important message",
+        "sleep 2.5",
+        "log critical And done",
+        "echo Task has now completed"
+    ]
+}

@@ -1,0 +1,10 @@
+# ASGI server
+starlette==0.17
+# web server workers
+uvicorn>=0.16
+# production web server
+gunicorn>=20.1
+# json schema validator
+jsonschema>=4.3
+# HTTP library
+requests>=2.26.0
