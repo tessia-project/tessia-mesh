@@ -1,0 +1,13 @@
+*.pyc
+.*.swp
+__pycache__/
+.eggs/
+*.egg-info/
+build/
+.tox/
+.coverage
+# code editors setttings and temporary files
+.idea
+.vscode
+*.patch
+*.log
