@@ -53,7 +53,7 @@ Use also the imperative present tense - that means instead of writing "I added t
 See the chapter [Contributing to a Project](http://git-scm.com/book/en/v2/Distributed-Git-Contributing-to-a-Project) of the online git book for references.
 
 Finally, your commit message must contain a sign-off including a reference to the
-[DCO 1.1](https://gitlab.com/tessia-project/tessia/blob/master/DCO1.1.txt) (Developer Certificate of Origin) used in the project in order to confirm you
+[DCO 1.1](https://gitlab.com/tessia-project/tessia-mesh/blob/main/DCO1.1.txt) (Developer Certificate of Origin) used in the project in order to confirm you
 followed the rules described in the document.
 
 Here's a commit message template summarizing the guidelines above:
