@@ -16,8 +16,11 @@ default:
 # unit testing for `control_node` component
 control_node unit:
   stage: unit test
+  variables:
+    TESSIA_RESOURCE_MANAGER_BD_PASSWORD: "pass4test"
   script:
     - pip3 install -r control_node/requirements.txt
+    - pip3 install -r resource_manager/requirements.txt
     - python3 -m pytest control_node
 
 # unit testing for `permission_manager` component
