@@ -15,8 +15,9 @@ limitations under the License.
 -->
 # Tessia - Task Execution Supporter and System Installation Assistant
 
-[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://gitlab.com/tessia-project/tessia-mesh/-/blob/master/LICENSE)
-[![pipeline status](https://img.shields.io/gitlab/pipeline/tessia-project/tessia)](https://gitlab.com/tessia-project/tessia-mesh/)
+[![license](https://img.shields.io/badge/license-Apache%202.0-blue)](https://gitlab.com/tessia-project/tessia-mesh/-/blob/main/LICENSE)
+[![pipeline status](https://img.shields.io/gitlab/pipeline/tessia-project/tessia-mesh/main)](https://gitlab.com/tessia-project/tessia-mesh/)
+[![language](https://img.shields.io/github/languages/top/tessia-project/tessia-mesh)](https://gitlab.com/tessia-project/tessia-mesh/)
 
 ## What is it?
 
