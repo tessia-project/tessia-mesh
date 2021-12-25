@@ -1,2 +1,11 @@
 # dependencies required for CI/CD activities
+
+# Pylint is a Python static code analysis tool which looks for programming
+# errors, helps enforcing a coding standard, sniffs for code smells and offers
+# simple refactoring suggestions (https://github.com/PyCQA/pylint/)
+pylint>=2.12.2
+
+# The pytest framework makes it easy to write small tests, yet scales to
+# support complex functional testing for applications and libraries.
+# (https://github.com/pytest-dev/pytest/)
 pytest>=6.2.5

@@ -1,4 +1,5 @@
 stages:
+  - static code analysis
   - unit test
 #TODO:
 #  - integration test
@@ -12,6 +13,13 @@ default:
     - source venv/bin/activate
     - pip3 install -r requirements-ci.txt
     - cd src
+
+# static code analysis for `permission_manager` component
+permission_manager static code analysis:
+  stage: static code analysis
+  script:
+    - pip3 install -r permission_manager/requirements.txt
+    - python3 -m pytest permission_manager
 
 # unit testing for `control_node` component
 control_node unit:
