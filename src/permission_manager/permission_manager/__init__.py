@@ -39,6 +39,8 @@ DEFAULT_CONFIGURATION = {
 
 
 class PermissionManager:
+    # at the moment, the class is the basis for further development
+    # pylint:disable=too-few-public-methods
     """
     Permission Manager
 
