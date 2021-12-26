@@ -76,7 +76,6 @@ def create_app(config=None) -> Flask:
     # Create common Permission Manager instance for this flask application
     permission_manager = PermissionManager()
     permission_manager.apply_config(app.config.get('permission_manager'))
-    app.permission_manager = permission_manager
 
     # register routes
     app.register_blueprint(api_v1['blueprint'])

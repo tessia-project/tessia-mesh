@@ -20,6 +20,8 @@ Permission Manager API v1
 # IMPORTS
 #
 
+from typing import TypedDict
+
 from flask import Blueprint
 from permission_manager.service_layer.entrypoints_handlers \
     import action_permissible_handler
@@ -28,9 +30,18 @@ from permission_manager.service_layer.entrypoints_handlers \
 # CODE
 #
 
+api_version = TypedDict(
+    'api_version', {
+        'blueprint': Blueprint,
+        'root': str,
+        'min_version': str,
+        'version': str
+    }
+)
+
 api = Blueprint('v1', __name__, url_prefix='/v1')
 
-api_v1 = {
+api_v1: api_version = {
     'blueprint': api,
     'root': '/v1',
     'min_version': '0.0.0',

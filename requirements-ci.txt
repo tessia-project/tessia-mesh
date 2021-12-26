@@ -1,5 +1,8 @@
 # dependencies required for CI/CD activities
 
+# Mypy: Static Typing for Python
+mypy>=0.930
+
 # Pylint is a Python static code analysis tool which looks for programming
 # errors, helps enforcing a coding standard, sniffs for code smells and offers
 # simple refactoring suggestions (https://github.com/PyCQA/pylint/)
