@@ -20,6 +20,7 @@ Permission Manager mesh component
 # IMPORTS
 #
 import logging
+from typing import Dict
 
 #
 # CONSTANTS AND DEFINITIONS
@@ -29,7 +30,7 @@ import logging
 CURRENT_VERSION = "0.0.1"
 
 # Default configuration
-DEFAULT_CONFIGURATION = {
+DEFAULT_CONFIGURATION: Dict[str, str] = {
 
 }
 
@@ -53,7 +54,7 @@ class PermissionManager:
         self._logger = logging.getLogger('mesh-permission-manager')
     # __init__()
 
-    def apply_config(self, configuration):
+    def apply_config(self, configuration) -> None:
         """
         Apply and reapply component configuration
         """

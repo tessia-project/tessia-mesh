@@ -19,7 +19,8 @@ permission_manager static code analysis:
   stage: static code analysis
   script:
     - pip3 install -r permission_manager/requirements.txt
-    - python3 -m pytest permission_manager
+    - python3 -m mypy permission_manager
+    - python3 -m pylint permission_manager
 
 # unit testing for `control_node` component
 control_node unit:
