@@ -20,18 +20,21 @@ import logging
 import logging.config
 import os
 
+from flask import Flask
+
+# pylint:disable=import-error
 from .v1 import api_v1
 from .. import configuration
 from ..service_layer.resource_manager import ResourceManager
-from flask import Flask
 
 
-def create_app(config=None) -> Flask:
+def create_app() -> Flask:
     """
     Create flask application
     """
 
     # specifying the path to the logging configuration:
+    # pylint: disable=fixme
     # TODO: implement a custom path
     log_conf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                  '../log.conf')

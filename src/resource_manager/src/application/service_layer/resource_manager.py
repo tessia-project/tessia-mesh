@@ -43,6 +43,8 @@ DEFAULT_CONFIGURATION = {
 
 
 class ResourceManager:
+    # at the moment, the class is the basis for further development
+    # pylint:disable=too-few-public-methods
     """
     Resource Manager
 
@@ -76,8 +78,8 @@ class ResourceManager:
             return self._conn
 
         engine = create_engine(self._db_uri, echo=True)
-        self._logger.debug("SQLAlchemy engine was has been created: {}".format(
-            engine))
+        self._logger.debug("SQLAlchemy engine was has been created: %s",
+                           engine)
 
         session = scoped_session(sessionmaker(bind=engine))
 
