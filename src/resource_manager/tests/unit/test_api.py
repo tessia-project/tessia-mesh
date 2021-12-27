@@ -26,16 +26,18 @@ from resource_manager.src.application.api.flask_app import create_app
 def client():
     """Create test client"""
     app = create_app()
+    # pylint: disable=redefined-outer-name
     with app.test_client() as client:
         yield client
 # client()
 
 
+# pylint: disable=redefined-outer-name
 def test_api_info_responses_are_valid(client):
     """Get API info"""
     resp = client.get('/')
     api_info = json.loads(resp.data)
-    resp = client.get('{}/schema'.format(api_info['apis'][0]['root']))
+    resp = client.get(f"{api_info['apis'][0]['root']}/schema")
     schema_info = json.loads(resp.data)
 
     assert api_info['name'] == 'resource_manager'

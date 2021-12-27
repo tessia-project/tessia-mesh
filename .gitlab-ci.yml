@@ -22,6 +22,13 @@ permission_manager static code analysis:
     - python3 -m mypy permission_manager
     - python3 -m pylint permission_manager
 
+# static code analysis for `resource_manager` component
+resource_manager static code analysis:
+  stage: static code analysis
+  script:
+    - pip3 install -r resource_manager/requirements.txt
+    - python3 -m pylint resource_manager
+
 # unit testing for `control_node` component
 control_node unit:
   stage: unit test
