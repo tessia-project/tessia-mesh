@@ -74,12 +74,14 @@ INSTANCE_CONFIGURATION = {
 def instance():
     """Create a default instance"""
     factory = InstanceFactory()
+
     with factory.create_instance(INSTANCE_CONFIGURATION) as default_instance:
         yield default_instance
 # instance()
 
 
 def test_instance_can_be_launched(instance, tmpdir):
+    # pylint: disable=redefined-outer-name
     """Run an instance and verify responses from components"""
     instance.setup()
     instance.run()

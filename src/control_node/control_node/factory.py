@@ -21,6 +21,7 @@ Tessia instance factory component
 #
 import base64
 
+# pylint: disable=fixme
 # TODO: update to 2020 validator
 from jsonschema import Draft7Validator
 
