@@ -29,6 +29,13 @@ resource_manager static code analysis:
     - pip3 install -r resource_manager/requirements.txt
     - python3 -m pylint resource_manager
 
+# static code analysis for `control_node` component
+control_node static code analysis:
+  stage: static code analysis
+  script:
+    - pip3 install -r control_node/requirements.txt
+    - python3 -m pylint control_node
+
 # unit testing for `control_node` component
 control_node unit:
   stage: unit test

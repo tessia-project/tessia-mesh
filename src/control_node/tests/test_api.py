@@ -38,11 +38,13 @@ from control_node.api import create_app
 def client():
     """Create test client"""
     app = create_app()
+    # pylint: disable=redefined-outer-name
     with app.test_client() as test_client:
         yield test_client
 # client()
 
 
+# pylint: disable=redefined-outer-name
 def test_api_info_responses_are_valid(client):
     """Query API version"""
     resp = client.get('/')
@@ -58,6 +60,7 @@ def test_api_info_responses_are_valid(client):
 
 
 class TestApiV1:
+    # pylint: disable=no-self-use
     """Tests for API v1"""
 
     def test_malformed_request_is_rejected(self, client):

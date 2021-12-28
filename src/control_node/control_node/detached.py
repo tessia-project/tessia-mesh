@@ -56,6 +56,7 @@ from signal import SIGINT
 
 import requests
 
+# pylint: disable=fixme
 # TODO: update to 2020 validator
 from jsonschema import Draft7Validator
 
@@ -283,6 +284,7 @@ class DetachedInstance:
                 }
 
                 # component configuration defined, enable it
+                # pylint: disable=consider-using-with
                 conf_dir = tempfile.TemporaryDirectory(prefix=f'{component}.')
                 self._conf_dirs[component] = conf_dir
                 conf_name = os.path.join(conf_dir.name, f'{component}.conf')

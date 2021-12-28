@@ -124,8 +124,8 @@ class CertificateAuthority:
             if not isinstance(ca_certs, list) or not ca_certs:
                 raise ValueError("Certificate not found in PKCS12 bundle")
             # if that is the case, pick a certificate from CA section
+            # pylint: disable=unsubscriptable-object
             cert = ca_certs[0]
-
         return cls(cert, key)
     # create_from_bundle()
 
