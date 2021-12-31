@@ -20,7 +20,8 @@ Scheduler task
 # IMPORTS
 #
 from typing import NewType
-from jsonschema import Draft7Validator  # TODO: update to 2020 validator
+# TODO: update to 2020 validator
+from jsonschema import Draft7Validator  # type: ignore
 
 #
 # CONSTANTS AND DEFINITIONS

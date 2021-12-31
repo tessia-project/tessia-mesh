@@ -36,6 +36,13 @@ control_node static code analysis:
     - pip3 install -r control_node/requirements.txt
     - python3 -m pylint control_node
 
+# static code analysis for `scheduler` component
+scheduler static code analysis:
+  stage: static code analysis
+  script:
+    - pip3 install -r scheduler/requirements.txt
+    - python3 -m mypy scheduler
+
 # unit testing for `control_node` component
 control_node unit:
   stage: unit test
