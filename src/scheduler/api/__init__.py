@@ -89,7 +89,7 @@ def create_app(config=None) -> Flask:
     # Create common scheduler instance for this flask application
     scheduler = Scheduler()
     scheduler.apply_config(app.config.get('scheduler'))
-    app.scheduler = scheduler
+    app.scheduler = scheduler  # type: ignore
 
     # register routes
     app.register_blueprint(api_v1['blueprint'])

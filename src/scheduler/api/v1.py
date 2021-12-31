@@ -19,6 +19,8 @@ Scheduler API v1
 #
 # IMPORTS
 #
+from typing import TypedDict
+
 from flask import current_app, Blueprint, jsonify, request
 
 from ..scheduler.errors import NotAuthorized
@@ -33,9 +35,18 @@ from ..scheduler.errors import NotAuthorized
 #
 
 
+api_version = TypedDict(
+    'api_version', {
+        'blueprint': Blueprint,
+        'root': str,
+        'min_version': str,
+        'version': str
+    }
+)
+
 api = Blueprint('v1', __name__, url_prefix='/v1')
 
-api_v1 = {
+api_v1: api_version = {
     'blueprint': api,
     'root': '/v1',
     'min_version': '0.0.0',

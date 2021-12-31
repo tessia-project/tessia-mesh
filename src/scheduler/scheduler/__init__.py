@@ -20,6 +20,7 @@ Scheduler mesh component
 # IMPORTS
 #
 import logging
+from typing import Optional, TypedDict
 
 from .query import PermissionManagerQueryFactory, ResourceManagerQueryFactory
 from .task import task_from_dict
@@ -28,8 +29,16 @@ from .task import task_from_dict
 # CONSTANTS AND DEFINITIONS
 #
 
+configuration = TypedDict(
+    'configuration', {
+        'resource-manager': Optional[object],
+        'permission-manager': Optional[object],
+        'allow-overrides': list
+    }
+)
+
 # Default configuration
-DEFAULT_CONFIGURATION = {
+DEFAULT_CONFIGURATION: configuration = {
     'resource-manager': None,
     'permission-manager': None,
     'allow-overrides': []
