@@ -43,6 +43,13 @@ scheduler static code analysis:
     - pip3 install -r scheduler/requirements.txt
     - python3 -m mypy scheduler
 
+# static code analysis for `scheduler` component
+task_runner static code analysis:
+  stage: static code analysis
+  script:
+    - pip3 install -r task_runner/requirements.txt
+    - python3 -m pylint task_runner
+
 # unit testing for `control_node` component
 control_node unit:
   stage: unit test
@@ -75,3 +82,10 @@ resource_manager unit:
   script:
     - pip3 install -r resource_manager/requirements.txt
     - python3 -m pytest resource_manager
+
+# unit testing for `task_runner` component
+task_runner unit:
+  stage: unit test
+  script:
+    - pip3 install -r task_runner/requirements.txt
+    - python3 -m pytest task_runner
