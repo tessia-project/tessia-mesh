@@ -65,7 +65,7 @@ SCHEMA = {
                         'certificate': {'$ref': '#/definitions/keystore'},
                         'private-key': {'$ref': '#/definitions/keystore'},
                     },
-                    'required': ['certificate', 'key']
+                    'required': ['certificate', 'private-key'],
                 },
                 {
                     'type': 'object',
@@ -74,7 +74,7 @@ SCHEMA = {
                         'pkcs12-bundle': {'$ref': '#/definitions/keystore'},
                         'import-key': {'$ref': '#/definitions/keystore'},
                     },
-                    'required': ['pkcs12-bundle', 'import-key']
+                    'required': ['pkcs12-bundle', 'import-key'],
                 },
             ]
         }

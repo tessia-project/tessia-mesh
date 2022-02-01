@@ -22,11 +22,14 @@ Tessia instance configurator
 import argparse
 import json
 import logging
+import os.path
 import signal
 import time
 
-from .control_node.errors import StartInstanceError
+from .control_node.certificate_authority import CertificateAuthority, \
+    export_key_cert_bundle
 from .control_node.detached import DetachedInstance
+from .control_node.errors import StartInstanceError
 from .control_node.factory import InstanceFactory
 
 #
@@ -43,6 +46,23 @@ MONITOR_INTERVAL = 5.0
 #
 # CODE
 #
+
+
+def certificate_export(key, crt, ca_auth: CertificateAuthority, name_tag: str,
+                       export_options: dict):
+    """
+    Export extra requested certificates
+    """
+    if export_options['format'] == 'files':
+        ca_auth.export_key_cert_to_directory(
+            export_options['dir'], key, crt, name_tag)
+    elif export_options['format'] == 'pkcs12':
+        bundle = export_key_cert_bundle(key, crt, ca_auth.root,
+                                        export_options['export_key'])
+        with open(os.path.join(export_options['dir'], f'{name_tag}.pfx'),
+                  'wb') as bundle_file:
+            bundle_file.write(bundle)
+# certificate_export()
 
 
 def supervise(instance: DetachedInstance):
@@ -74,9 +94,29 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', default='./conf/default.json',
                         help="Path to configuration file")
-    parser.add_argument('--make-cli-cert', action='store_true',
+    parser.add_argument('--only-check', action='store_true',
+                        help="Do not start instance, but check configuration "
+                        "and perform CA actions")
+    parser.add_argument('--make-client-cert', action='store_true',
                         help="Generate additional client certificate "
                              "to communicate with components")
+    parser.add_argument('--client-cert-name', default='client',
+                        help="Name identifier for client certificate")
+    parser.add_argument('--make-server-cert', action='store_true',
+                        help="Generate additional server certificate "
+                             "for a mesh component")
+    parser.add_argument('--server-cert-name', default='server',
+                        help="Name identifier for server certificate")
+    parser.add_argument('--server-cert-hostname', default='localhost',
+                        help="Hostname for server certificate")
+    parser.add_argument('--export-format', choices=['files', 'pkcs12'],
+                        default='files',
+                        help="Export generated certificates as "
+                        "separate PEM files or a PKCS12 container")
+    parser.add_argument('--export-dir', default='./',
+                        help="Export directory")
+    parser.add_argument('--pkcs12-export-phrase', default='pkcs12',
+                        help="Export phrase for PKCS12 container")
 
     args = parser.parse_args()
     logging.info('Loading configuration from %s', args.config)
@@ -87,14 +127,33 @@ def main():
     factory = InstanceFactory()
     logging.info('Creating Tessia instance')
     instance = factory.create_instance(configuration)
+
+    export_options = {
+        'dir': args.export_dir,
+        'format': args.export_format,
+        'export_key': args.pkcs12_export_phrase
+    }
+    if args.make_client_cert:
+        # write additional client certificates
+        logging.info('Writing additional client certificate')
+        key, crt = instance.ca_root.create_component_client_certificate(
+            args.client_cert_name)
+        certificate_export(key, crt, instance.ca_root, 'client',
+                           export_options)
+
+    if args.make_server_cert:
+        # write additional server certificates
+        logging.info('Writing additional server certificate')
+        key, crt = instance.ca_root.create_component_server_certificate(
+            args.server_cert_name, args.server_cert_hostname)
+        certificate_export(key, crt, instance.ca_root, 'server',
+                           export_options)
+
+    if args.only_check:
+        return
+
     logging.info('Writing Tessia instance configuration')
     instance.setup()
-
-    if args.make_cli_cert:
-        # write additional client certificates
-        key, crt = instance.ca_root.create_component_client_certificate(
-            'external')
-        instance.ca_root.export_key_cert_to_directory('./', key, crt)
 
     logging.info('Starting Tessia instance')
     try:
