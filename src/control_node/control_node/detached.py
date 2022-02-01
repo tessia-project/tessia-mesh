@@ -53,12 +53,11 @@ import tempfile
 import time
 
 from signal import SIGINT
+from typing import Dict
 
 import requests
 
-# pylint: disable=fixme
-# TODO: update to 2020 validator
-from jsonschema import Draft7Validator
+from jsonschema import Draft202012Validator
 
 from .certificate_authority import CertificateAuthority, export_key_cert_bundle
 from .errors import StartInstanceError, ComponentProbeError, ValidationError
@@ -82,11 +81,25 @@ SCHEMA = {
         'local_component': {
             'type': 'object',
             'properties': {
-                'listen': {'type': 'string'},
-                'port': {'type': 'integer'},
+                'listen': {
+                    'type': 'string',
+                    'description': 'Component node bind address',
+                },
+                'port': {
+                    'type': 'integer',
+                    'description': 'Component node port',
+                },
                 'configuration': {
                     'type': 'object',
+                    'description': 'Component configuration',
                     'additionalProperties': True
+                },
+                'env': {
+                    'type': 'object',
+                    'description': 'Environment variables',
+                    'additionalProperties': {
+                        'type': ['integer', 'string']
+                    }
                 }
             },
             'required': ['listen', 'port'],
@@ -108,7 +121,7 @@ SCHEMA = {
 
 
 # Schema validator
-_VALIDATOR = Draft7Validator(SCHEMA)
+_VALIDATOR = Draft202012Validator(SCHEMA)
 
 
 class DetachedInstance:
@@ -133,7 +146,7 @@ class DetachedInstance:
         self._conf = configuration
 
         # configuration directories created for components
-        self._conf_dirs = {}
+        self._conf_dirs: Dict[str, tempfile.TemporaryDirectory] = {}
 
         # spawned processes
         self._processes = {}
@@ -181,7 +194,7 @@ class DetachedInstance:
         return ''
     # _get_component_url()
 
-    def _start_local_component(self, component_name):
+    def _start_local_component(self, component_name: str):
         """
         Start a local component
 
@@ -194,6 +207,8 @@ class DetachedInstance:
             Popen: process object
         """
         env = os.environ.copy()
+        if 'env' in self._conf[component_name]:
+            env.update(self._conf[component_name]['env'])
         conf_dir = self._conf_dirs[component_name].name
 
         listen = (self._conf[component_name]['listen'],
@@ -211,7 +226,7 @@ class DetachedInstance:
             # prepare ASGI
             server = 'gunicorn'
             args = [
-                 '--worker-class', 'uvicorn.workers.UvicornWorker',
+                '--worker-class', 'uvicorn.workers.UvicornWorker',
                 '--bind', f'{listen[0]}:{listen[1]}',
                 '--certfile', crt_path,
                 '--keyfile', key_path,

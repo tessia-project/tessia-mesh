@@ -46,7 +46,10 @@ INSTANCE_CONFIGURATION = {
             "listen": "localhost",
             "port": 8452,
             "api_app": "resource_manager.src.application.api.flask_app:create_app()",
-            "configuration": {}
+            "configuration": {},
+            "env": {
+                "TESSIA_RESOURCE_MANAGER_BD_PASSWORD": "example"
+            }
         },
         "scheduler": {
             "listen": "localhost",
