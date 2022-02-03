@@ -209,7 +209,8 @@ class CertificateAuthority:
         return (key, cert)
     # create_component_server_certificate()
 
-    def export_key_cert_to_directory(self, directory, key, certificate):
+    def export_key_cert_to_directory(self, directory, key, certificate,
+            file_tag=None):
         """
         Export a private key, certificate and its CA as separate PEM files to
         the specified directory.
@@ -217,9 +218,10 @@ class CertificateAuthority:
         Returns:
             Tuple(str, str, str): paths to key, certificate and CA certificate
         """
-        crt_path = path.join(directory, 'crt.pem')
-        key_path = path.join(directory, 'key.pem')
-        ca_path = path.join(directory, 'ca.pem')
+        tag = f'{file_tag}_' if file_tag else ''
+        crt_path = path.join(directory, f'{tag}crt.pem')
+        key_path = path.join(directory, f'{tag}key.pem')
+        ca_path = path.join(directory, f'{tag}ca.pem')
         with open(crt_path, 'wb') as file:
             file.write(export_certificate(certificate))
         with open(key_path, 'wb') as file:
