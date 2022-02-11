@@ -38,7 +38,7 @@ import threading
 import time
 
 from .task import task_from_dict
-from ..machines.echo import EchoMachine
+from ..machines import EchoMachine, PowerManagerMachine
 
 #
 # CONSTANTS AND DEFINITIONS
@@ -53,6 +53,10 @@ CANCEL_SIGNALS = (
 
 # Watchdog will print messages this often (seconds)
 WATCHDOG_INTERVAL = 60.0
+
+# Log format string
+LOG_FORMAT_STRING = ('[%(asctime)s] %(levelname)s'
+                     ' [%(name)s.%(funcName)s:%(lineno)d] %(message)s')
 
 
 class RunnerExitCode(Enum):
@@ -110,14 +114,17 @@ LOCAL_TIMEZONE = datetime.now().astimezone().tzinfo
 #
 
 # pylint:disable=too-few-public-methods
-class NotImplementedTask:
+
+
+class NotImplementedMachine:
     """A task for test purposes"""
     @staticmethod
     def run(task):
         """Run task"""
         raise RuntimeError(f'Machine {task.machine} not impelmented')
     # run()
-# NotImplementedTask
+# NotImplementedMachine
+
 
 class RunnerThread(Thread):
     """Exception-handling thread"""
@@ -177,8 +184,11 @@ class TaskRunner(Process):
         # setworking directory
         os.chdir(self._work_dir)
 
-        logging.basicConfig(filename='output.log', level=logging.DEBUG)
-        self._logger = logging.getLogger('task-runner')
+        logging.basicConfig(filename='output.log', level=logging.DEBUG,
+                            format=LOG_FORMAT_STRING,
+                            datefmt=r'%Y-%m-%d %H:%M:%S')
+
+        self._logger = logging.getLogger('task_runner')
 
         # create an internal buffer for storing other thread exception state
         exception_store = Queue()
@@ -195,10 +205,10 @@ class TaskRunner(Process):
         self._logger.info("Runner started")
         watchdog_loop_time = time.monotonic()
 
-        if self._task.machine == 'echo':
-            target_cls = EchoMachine
-        else:
-            target_cls = NotImplementedTask
+        target_cls = {
+            'echo': EchoMachine,
+            'powerman': PowerManagerMachine
+        }.get(self._task.machine, NotImplementedMachine)
 
         # thread with the machine
         # Note that it is set as "daemonic" so that the runner could quit
