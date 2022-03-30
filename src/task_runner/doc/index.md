@@ -16,7 +16,7 @@ limitations under the License.
 
 # Tessia Task Runner component
 
-A component to start and monitor tasks.
+A component to start and monitor tasks. See [which tasks are provided](tasks.md).
 
 ## Setup
 
@@ -35,7 +35,7 @@ python3 -m gunicorn  -k uvicorn.workers.UvicornWorker 'task_runner.api.star_app:
 
 To submit a task perform a POST request to `/v1/tasks` endpoint:
 ```sh
-curl -s -X POST --url http://localhost:8000/v1/tasks  --data-binary @task_runner/doc/sample_task.json -H 'Content-Type: application/json'
+curl -s -X POST --url http://localhost:8000/v1/tasks  --data-binary @task_runner/doc/sample_echo.json -H 'Content-Type: application/json'
 ```
 
 Response will be task ID and status:
@@ -45,7 +45,7 @@ Response will be task ID and status:
 
 TaskRunner can be started on its own in command-line mode:
 ```sh
-python -m task_runner.lib.runner task_runner/doc/sample_task.json
+python -m task_runner.lib.runner task_runner/doc/sample_echo.json
 ```
 
 The task will be run with identifier 'cli' and its results put into current directory.

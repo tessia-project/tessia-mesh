@@ -72,6 +72,8 @@ class PoweronAction:
         # boot_method == 'volume':
         #   volume_type == 'fcp':
         #     - requires 'fcp_adapter', 'wwpn', 'lun'
+        #   volume_type == 'dasd', 'mdisk' etc:
+        #     - requires 'volume_id'
 
     # __init__()
 
