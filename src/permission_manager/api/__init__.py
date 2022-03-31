@@ -16,6 +16,7 @@
 REST interface for Permission Manager mesh component
 """
 
+import json
 import os
 from logging.config import dictConfig as logDictConfig
 
@@ -60,7 +61,7 @@ def create_app(config=None) -> Flask:
     app = Flask(__name__, instance_relative_config=True)
 
     if config:
-        app.config.from_json(config)
+        app.config.from_file(config, json.load)
     else:
         app.config.from_mapping(DEFAULT_API_CONFIGURATION)
 
