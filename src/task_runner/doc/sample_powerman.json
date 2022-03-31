@@ -1,0 +1,111 @@
+{
+    "machine": "powerman",
+    "parameters": {
+        "targets": [
+            {
+                "action": "start",
+                "system": {
+                    "cpc": "CPC1",
+                    "partition_name": "LPAR1"
+                },
+                "hypervisor": {
+                    "type": "cpc",
+                    "hostname": "hmc.example.com",
+                    "credentials": {
+                        "username": "tessia",
+                        "password": "example"
+                    },
+                    "connection_options": {
+                        "verify_certificate": false
+                    }
+                },
+                "parameters": {
+                    "boot_method": "volume",
+                    "volume_type": "dasd",
+                    "volume_id": "12ab"
+                }
+            },
+            {
+                "action": "stop",
+                "system": {
+                    "cpc": "CPC1",
+                    "partition_name": "LPAR1"
+                },
+                "hypervisor": {
+                    "type": "cpc",
+                    "hostname": "hmc.example.com",
+                    "credentials": {
+                        "username": "tessia",
+                        "password": "example"
+                    },
+                    "connection_options": {
+                        "verify_certificate": false
+                    }
+                }
+            },
+            {
+                "action": "start",
+                "system": {
+                    "cpc": "CPC1",
+                    "partition_name": "LPAR1"
+                },
+                "hypervisor": {
+                    "type": "cpc",
+                    "hostname": "hmc.example.com",
+                    "credentials": {
+                        "username": "tessia",
+                        "password": "example"
+                    },
+                    "connection_options": {
+                        "verify_certificate": false
+                    }
+                },
+                "parameters": {
+                    "boot_method": "volume",
+                    "volume_type": "fcp",
+                    "lun": "4050404800000000",
+                    "wwpn": "500507630b01c320",
+                    "fcp_adapter": "0.0.1900"
+                }
+            },
+            {
+                "action": "start",
+                "system": {
+                    "guest_name": "vm1",
+                    "credentials": {
+                        "userid": "vm1",
+                        "password": "example"
+                    }
+                },
+                "hypervisor": {
+                    "type": "zvm",
+                    "hostname": "vm.example.com"
+                },
+                "parameters": {
+                    "boot_method": "cms"
+                }
+            },
+            {
+                "action": "start",
+                "system": {
+                    "guest_name": "vm1",
+                    "credentials": {
+                        "userid": "vm1",
+                        "password": "example"
+                    }
+                },
+                "hypervisor": {
+                    "type": "zvm",
+                    "hostname": "vm.example.com"
+                },
+                "parameters": {
+                    "boot_method": "volume",
+                    "boot_volume": {
+                        "volume_id": "33df",
+                        "volume_type": "dasd"
+                    }
+                }
+            }
+        ]
+    }
+}
