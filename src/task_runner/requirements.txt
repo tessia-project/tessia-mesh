@@ -9,4 +9,4 @@ jsonschema>=4.3
 # HTTP library
 requests>=2.26.0
 # tessia baselib
-zhmcclient~=1.1
+zhmcclient~=1.2
