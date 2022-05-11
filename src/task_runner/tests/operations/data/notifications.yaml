@@ -1,0 +1,20 @@
+---
+# OS messages for HMC tests
+console_stream_forward:
+  - headers:
+      notification-type: os-message
+    message:
+      os-messages:
+        - sequence-number: 125
+          message-text: First message
+        - sequence-number: 126
+          message-text: Second message
+  - headers:
+      notification-type: os-message
+    message:
+      os-messages:
+        - sequence-number: 127
+          message-text: Continued once
+        - sequence-number: 128
+          message-text: Continued twice
+

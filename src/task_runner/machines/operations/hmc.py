@@ -22,18 +22,28 @@ Keeps a session to the hypervisor for reuse
 #
 # IMPORTS
 #
+from datetime import datetime, timedelta, timezone
+from enum import Enum
+import itertools
 import logging
+import sys
+import threading
 
 from dataclasses import dataclass
+from queue import Empty, Queue, SimpleQueue
+from threading import Thread
 from urllib.parse import urlsplit
 
 import zhmcclient
+
+from .hypconsole import HypStream
 
 #
 # CONSTANTS AND DEFINITIONS
 #
 DEFAULT_CONNECTION_OPTIONS = {
     'port': zhmcclient.DEFAULT_HMC_PORT,
+    'stomp_port': zhmcclient.DEFAULT_STOMP_PORT,
     'connect_timeout': zhmcclient.DEFAULT_CONNECT_TIMEOUT,
     'status_timeout': zhmcclient.DEFAULT_STATUS_TIMEOUT,
     'operation_timeout': zhmcclient.DEFAULT_OPERATION_TIMEOUT,
@@ -41,6 +51,21 @@ DEFAULT_CONNECTION_OPTIONS = {
 }
 
 
+# Notification buffer size
+# Queue accumulates messages from NotificationReceiver and blocks when
+# length is exceeded.
+# Each queue entry is not a single message, but a chunk of several messages,
+# as received by NotificationReceiver.
+# The exact value is therefore somewhat arbitrary chosen, but value of 1 will
+# serialize processing/waiting loop
+MAX_QUEUED_NOTIFICATIONS = 20
+
+# Maximum number of messages read from queue
+# Prevents list of returned messages from growing indefinitely
+MAX_RETURNED_MESSAGES_PER_CALL = 100
+
+
+TZINFO = timezone.utc
 #
 # CODE
 #
@@ -70,6 +95,37 @@ class CpcPartition:
 # CpcPartition
 
 
+class HmcNotificationMessageType(Enum):
+    """
+    Notification message types
+
+    Value corresponds to value set in JMS message header
+    (see HMC Web Services API)
+    """
+    OS_MESSAGE = 'os-message'
+    STATUS_CHANGE = 'status-change'
+    PROPERTY_CHANGE = 'property-change'
+    INVENTORY_CHANGE = 'inventory-change'
+    JOB_COMPLETION = 'job-completion'
+    LOG_ENTRY = 'log-entry'
+# HmcNotificationMessageType
+
+
+class HmcNotificationTopic(Enum):
+    """
+    Notification topics
+
+    Value corresponds to topic types returned by get_notification_topics
+    (see HMC Web Services API)
+    """
+    OBJECT_TOPIC = 'object-notification'
+    JOB_TOPIC = 'job-notification'
+    AUDIT_TOPIC = 'audit-notification'
+    SECURITY_TOPIC = 'security-notification'
+    OS_MESSAGE_TOPIC = 'os-message-notification'
+# HmcNotificationTopic
+
+
 class HmcSession:
     """HMC hypervisor session"""
 
@@ -83,7 +139,7 @@ class HmcSession:
         self._cache = {}
     # __init__()
 
-    def _find_guest(self, guest: CpcPartition):
+    def _find_guest(self, guest: CpcPartition) -> "union[zhmcclient.Partition,zhmcclient.Lpar]":
         """Find and cache guest object"""
         # check cache
         if partition := self.cache(guest.partition_name):
@@ -207,6 +263,12 @@ class HmcSession:
         self._cache.clear()
     # connect()
 
+    @property
+    def connected(self) -> bool:
+        """Test if connected to HMC"""
+        return self._client is not None and self._client.session.is_logon()
+    # connected()
+
     @staticmethod
     def _normalize_address(address):
         """
@@ -251,6 +313,107 @@ class HmcSession:
             self._client.session.logoff()
             self._client = None
     # disconnect()
+
+    def get_notification_topic(self, notification_topic: HmcNotificationTopic,
+                               guest: CpcPartition = None) -> str:
+        """
+        Get the requested topic
+
+        Raises:
+            zhmcclient.HTTPError: generic HTTP error
+            RuntimeError: requested topic is not found
+        """
+        if notification_topic == HmcNotificationTopic.JOB_TOPIC:
+            return self._client.session.job_topic
+        if notification_topic == HmcNotificationTopic.OBJECT_TOPIC:
+            return self._client.session.object_topic
+        if notification_topic == HmcNotificationTopic.OS_MESSAGE_TOPIC:
+            # messages are created ad hoc, but may raise exceptions
+            try:
+                guest_obj = self._find_guest(guest)
+                return guest_obj.open_os_message_channel(
+                    include_refresh_messages=True)
+            except zhmcclient.HTTPError as exc:
+                # 409,331: topic already exists for the current partition,
+                # we have a fallback case for that.
+                # Otherwise raise the original exception
+                if not (exc.http_status == 409 and exc.reason == 331):
+                    raise
+
+        all_topics = self._client.session.get_notification_topics()
+        # From all the topics returned we only need those that are
+        # related to os-message-notification AND have the desired
+        # LPAR object specified
+        # LPAR object has its unique ID, and we search for it
+        # in the 'object-uri' field (comparing this directly is
+        # not robust enough)
+        matching_topics = [
+            topic['topic-name'] for topic in all_topics
+            if topic['topic-type'] == notification_topic.value and
+            (notification_topic != HmcNotificationTopic.OS_MESSAGE_TOPIC or
+             topic['object-uri'].split('/')[-1] == guest_obj.uri.split('/')[-1]
+             )]
+        if not matching_topics:
+            # none found - that is very much an error
+            logger.debug(
+                'No matching topic %s found in %s',
+                notification_topic, all_topics)
+            raise RuntimeError(
+                'Requested notification topic does not exist') from None
+
+        if len(matching_topics) > 1:
+            # make a note, but can probably work
+            logger.debug('Multiple topic entries %s found in %s',
+                         notification_topic, all_topics)
+
+        return matching_topics[0]
+    # get_notification_topic()
+
+    def get_os_messages(self, guest: CpcPartition,
+                        begin_seq_nr: int = 0) -> list:
+        """
+        Get the list of OS messages for a guest
+
+        Args:
+            guest (CpcPartition): guest partition
+            begin_seq_nr (int): message sequence number to start from
+
+        Returns:
+            list: list of OS messages
+        """
+        guest_obj = self._find_guest(guest)
+        # at the moment of writing zhmcclient did not have a method
+        # to get the list of OS messages, so we'll issue a direct URL request
+        try:
+            os_messages_resp = self._client.session.get(
+                f'{guest_obj.uri}/operations/list-os-messages'
+                f'?begin-sequence-number={begin_seq_nr}')
+        except zhmcclient.ParseError as exc:
+            logger.debug("get_os_messages failed: %s", exc)
+            return []
+
+        os_messages = os_messages_resp['os-messages']
+        return os_messages
+    # get_os_messages()
+
+    def open_notification_receiver(self, topic: str):
+        """
+        Return a notification receiver object
+        """
+        return zhmcclient.NotificationReceiver(
+            topic,
+            self._hypervisor.hostname,
+            self._hypervisor.credentials['username'],
+            self._hypervisor.credentials['password'],
+            port=self._connection_options['stomp_port'])
+    # open_notification_receiver()
+
+    def send_os_command(self, command: str, guest: CpcPartition):
+        """Send command to OS"""
+        logger.debug("Sending command to OS: %s", command)
+        partition = self._find_guest(guest)
+        partition.send_os_command(command)
+    # send_os_message()
 
     def set_dpm_boot_params(self, guest: CpcPartition, boot_params: dict):
         """Set boot parameters in DPM mode"""
@@ -297,7 +460,7 @@ class HmcSession:
                            boot_params['boot_method'])
     # set_dpm_boot_params()
 
-    def start(self, guest: CpcPartition, boot_params):
+    def start(self, guest: CpcPartition, boot_params: dict = None):
         """
         Start a guest
 
@@ -377,6 +540,368 @@ class HmcSession:
             partition.stop()
             if not partition.manager.cpc.dpm_enabled:
                 partition.deactivate()
-
     # update_properties()
-# HmcHypervisorSession
+
+# HmcSession
+
+
+class HmcNotifications:
+    """
+    HMC notifications channel
+
+    Messages are read by a separate thread by zhmcclient.NotificationReceiver
+    and buffered until requested with get_messages()
+
+    There are many notification types that can be subscribed to.
+    """
+
+    def __init__(self, reconnect_function, *,
+                 max_queued_messages=MAX_QUEUED_NOTIFICATIONS):
+        """
+        Create an async reader from notifications channel
+
+        Args:
+            reconnect_function (Callable[[], zhmcclient.NotificationReceiver]):
+                a function returning a NotificationReceiver object
+        """
+        # Reconnection function: called when the connection is lost
+        self._reconnect_fn = reconnect_function
+        # Channel: communication channel
+        self._channel: zhmcclient.NotificationReceiver = None
+        # Received message: messages are stored here
+        self._received_messages = Queue(max_queued_messages)
+        # Error queue for JSM errors. Unbounded errors seems like not a good idea,
+        # but we don't want to block the thread.
+        self._errors = SimpleQueue()
+        # Poll thread: reads messages from the channel
+        self._poll_thread = None
+        # close: do not read any more messages and do not reconnect
+        self._closed = threading.Event()
+    # __init__()
+
+    def __enter__(self):
+        """
+        Context managing entrypoint
+        """
+        self._channel = self._reconnect_fn()
+        self._start_reading()
+        return self
+    # __enter__()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """
+        Context managing exit point
+
+        Having context assures that this object owns communication channel
+        and will close it after it is no longer needed
+        """
+        self.close()
+    # __exit__()
+
+    def _read_from_channel(self):
+        """
+        Retrieve pending HMC notifications, which may contain several messages
+
+        Reading notifications is a blocking procedure and stalls an event loop,
+        so this method should be run in a separate thread
+        """
+        spam_rate = 60  # seconds between writing a warning message
+        last_not_open = datetime.now(TZINFO) - timedelta(seconds=spam_rate)
+        last_error = last_not_open
+
+        try:
+            # Thread can be exited by setting the event flag
+            # A small timeout is set here to prevent hot looping
+            while not self._closed.wait(0.2):
+                if not self._channel:
+                    if (timedelta(seconds=spam_rate) >
+                            datetime.now(TZINFO) - last_not_open):
+                        last_not_open = datetime.now(TZINFO)
+                        self._errors.put({
+                            'error': 'Notifications channel is not open',
+                            'timestamp': last_not_open
+                        })
+                    continue
+
+                try:
+                    for headers, message in self._channel.notifications():
+                        self._received_messages.put({
+                            'headers': headers,
+                            'message': message,
+                            'timestamp': datetime.now(TZINFO)
+                        })
+                        if self._closed.is_set():
+                            break
+                except zhmcclient.NotificationJMSError as jms_error:
+                    if (timedelta(seconds=spam_rate) >
+                            datetime.now(TZINFO) - last_error):
+                        last_error = datetime.now(TZINFO)
+                        self._errors.put({
+                            'error': jms_error,
+                            'timestamp': last_error
+                        })
+
+        except Exception:   # pylint:disable=broad-except
+            # Catch any exception and pass it further
+            self._errors.put(
+                {'error': sys.exc_info(), 'timestamp': datetime.now(TZINFO)})
+    # _read_from_channel()
+
+    def _start_reading(self):
+        """
+        Start a notification reading thread
+        """
+        if not self._poll_thread:
+            self._poll_thread = Thread(
+                name="hmc-listener", target=self._read_from_channel,
+                # during testing thread gets stuck after program exit,
+                # so we set daemon here
+                daemon=True)
+            self._poll_thread.start()
+    # _start_reading()
+
+    def close(self):
+        """
+        Close the connection to the HMC
+
+        This method is called when the object is no longer needed
+        """
+        self._closed.set()
+        if self._channel:
+            self._channel.close()
+            self._channel = None
+        if self._poll_thread:
+            self._poll_thread.join(timeout=5.0)
+            self._poll_thread = None
+
+    def get_notification(self, timeout=5.0):
+        """
+        Get a single notification from notification channel.
+        Blocking call up to timeout seconds
+
+        Args:
+            timeout (float): max seconds to wait
+
+        Returns:
+            dict: message
+        """
+        try:
+            return self._received_messages.get_nowait()
+        except Empty:
+            pass
+
+        # No queued notifications - check what's up with the channel
+        if self._closed.is_set():
+            return None
+
+        if not self._channel:
+            # Channel is lost - reconnect
+            # Note that reconnect may raise,
+            # and we want exceptions to be propagated in caller thread,
+            # not in our listener
+            self._channel = self._reconnect_fn()
+        if self._poll_thread is None or not self._poll_thread.is_alive():
+            self._start_reading()
+
+        try:
+            return self._received_messages.get(timeout=timeout)
+        except Empty:
+            pass
+
+        return None
+    # get_notification()
+
+    def get_queued_notifications(
+            self, message_limit=MAX_RETURNED_MESSAGES_PER_CALL):
+        """
+        Get all queued notifications (non-blocking)
+
+        Args:
+            message_limit (int): maximum number of messages to return
+
+        Returns:
+            list: list of messages
+        """
+        messages = []
+        try:
+            while len(messages) < message_limit:
+                messages.append(self._received_messages.get_nowait())
+        except Empty:
+            pass
+        return messages
+    # get_queued_notifications()
+
+    def get_errors(self) -> list:
+        """
+        Get error messages.
+
+        Returns:
+            list: error messages in queue
+        """
+        result = []
+        try:
+            while True:
+                result.append(self._errors.get_nowait())
+        except Empty:
+            return result
+    # get_errors()
+
+# HmcNotifications
+
+
+class OsMessages(HmcNotifications):
+    """
+    Retrieve OS messages for a partition
+    """
+
+    def __init__(self, hmc_session: HmcSession, guest: CpcPartition):
+        """
+        Create OsMessages instance
+
+        Args:
+            hmc_session (HmcSession): HMC session
+            guest (CpcPartition): guest partition
+        """
+        super().__init__(self._reconnect)
+        self._guest = guest
+        self._hmc_session = hmc_session
+        self._last_sequence_nr = 0
+    # __init__()
+
+    def _reconnect(self):
+        """
+        Reconnect to HMC notifications
+
+        Returns:
+            zhmcclient.NotificationReceiver: notifications session
+        """
+        if not self._hmc_session.connected:
+            logger.info("Not connected to HMC, attempting to reconnect")
+            self._hmc_session.connect()
+            # still no connection
+            if not self._hmc_session.connected:
+                logger.warning("Could not reconnect to HMC")
+                return None
+
+        topic = self._hmc_session.get_notification_topic(
+            HmcNotificationTopic.OS_MESSAGE_TOPIC, self._guest)
+        return self._hmc_session.open_notification_receiver(topic)
+    # _reconnect()
+
+    def get_messages(self, timeout=5.0):
+        """
+        Get all messages from notification channel.
+        Blocking call up to timeout seconds
+
+        Args:
+            timeout (number): max seconds to wait
+
+        Returns:
+            List: messages
+        """
+        # get all messages
+        if notification := self.get_notification(timeout=timeout):
+            # we got one message with wait; get all the rest without waiting
+            rest_notifications = self.get_queued_notifications()
+            # OS messages come as another list in the notification body
+            os_messages: list = notification['message']['os-messages']
+            for entry in rest_notifications:
+                os_messages.extend(entry['message']['os-messages'])
+        else:
+            # fallback: get last messages by a direct call
+            os_messages = []
+            # os_messages = self._hmc_session.get_os_messages(
+            #     self._guest, self._last_sequence_nr)
+
+        if os_messages:
+            # In rare cases, e.g. when fallback has received a message,
+            # and then it was received again over notifications,
+            # we might get duplicates, so we remove them by sequence number.
+            new_messages = [
+                message['message-text'] for message in
+                itertools.dropwhile(
+                    lambda msg: int(msg['sequence-number']
+                                    ) <= self._last_sequence_nr,
+                    os_messages)]
+            # Note only start of the list is dropped,
+            # because HMC API tells that sequence number may wrap around.
+
+            self._last_sequence_nr = int(os_messages[-1]['sequence-number'])
+
+            # There is still a case where sequence number wraps between
+            # two calls, i.e. we have the last possible sequence number,
+            # and the next message begins from start.
+            # We do not handle this at all.
+
+            return new_messages
+
+        # when no message received - check for errors
+        if errors := self.get_errors():
+            logger.debug("HMC notifications errors:")
+            for error in errors:
+                logger.debug("[%s] Exception", error['timestamp'],
+                             exc_info=error['error'])
+
+        return []
+    # get_messages()
+# OsMessages
+
+
+class HmcConsoleStream(OsMessages, HypStream):
+    """
+    Stream implementation for Operating System Messages
+
+    This is a base for unix-like terminal interaction.
+    """
+
+    def __init__(self, session: HmcSession, guest: CpcPartition):
+        logger.debug("Creating HMC console stream for partition %s",
+                     guest.partition_name)
+        super().__init__(session, guest)
+    # __init__()
+
+    def read(self, *, timeout, **kwargs) -> list:
+        """
+        Read updates from the console as a list of strings
+
+        Args:
+            timeout (float): Timeout in seconds
+            **kwargs: Additional arguments
+
+        Returns:
+            list: List of strings
+        """
+        item = self.get_messages(timeout=timeout)
+        return item
+    # read()
+
+    def write(self, data: str, **kwargs) -> None:
+        """
+        Write data to the console
+
+        Args:
+            data (str): Data to write
+            **kwargs: Additional arguments
+        """
+        # HMC API has a limit of 200 chars per call,
+        # so we need to split the commands in smaller pieces
+        def _string_to_chunks(string, size=200):
+            if len(string) < size:
+                yield string
+                return
+
+            # save command to a temporary file - 'tr' reads stdin as is
+            yield "tr -d '\\n' > /tmp/command"
+            for start in range(0, len(string), size):
+                yield string[start:start+size]
+
+            # stop reading stdin
+            yield '^D'
+            # run command from temporary file
+            yield '. /tmp/command'
+
+        for chunk in _string_to_chunks(data):
+            self._hmc_session.send_os_command(chunk, self._guest)
+    # write()
+
+# HmcConsoleStream
